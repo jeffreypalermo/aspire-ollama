@@ -1,0 +1,58 @@
+﻿@page "/"
+@using Microsoft.Extensions.AI
+@rendermode InteractiveServer
+
+<PageTitle>Home</PageTitle>
+
+<h1>Ollama demo</h1>
+
+<p>Welcome to the Ollama demo!</p>
+
+
+<p>
+    <form @onsubmit="GetPrompt">
+    <input type="text" @bind-value="_prompt" width="500px"/><br/>
+    <button type="submit" >Ask</button>
+    </form>
+</p>
+<p>@_response</p>
+
+@code {
+    private string _prompt = "";
+    private string _response = "";
+
+
+    [Inject(Key = ServiceKeys.Phi3)]
+    public required IChatClient OllamaClient1 { get; set; }
+
+    private async Task GetPrompt()
+    {
+        var client = OllamaClient1;
+
+        if (!string.IsNullOrWhiteSpace(_prompt))
+        {
+            if (client is null)
+            {
+                _response = "No model selected";
+                return;
+            }
+
+            bool gotResponse = false;
+            _response = "Asking Ollama...";
+
+            var stream = client.CompleteStreamingAsync(_prompt);
+
+            await foreach (var answerToken in stream)
+            {
+                if (!gotResponse)
+                {
+                    _response = "";
+                    gotResponse = true;
+                }
+
+                _response += answerToken.Text;
+                StateHasChanged();
+            }
+        }
+    }
+}
